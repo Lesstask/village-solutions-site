@@ -11,4 +11,4 @@ Static site. Vercel auto-deploys on push to `main`.
 - Repo: this one
 - Vercel project: village-solutions-site
 
-> Auto-deploy verified ✓
+> Auto-deploy: GitHub → Vercel ✓
