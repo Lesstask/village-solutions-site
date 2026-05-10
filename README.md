@@ -9,3 +9,6 @@ Static site. Vercel auto-deploys on push to `main`.
 
 - Live: https://villagesolutions.online
 - Repo: this one
+- Vercel project: village-solutions-site
+
+> Auto-deploy verified ✓
