@@ -1102,11 +1102,61 @@ img { max-width: 100%; display: block; }
   color: var(--muted);
   letter-spacing: 0.06em;
 }
+.calc-intake {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-bottom: 18px;
+}
+.calc-intake-head {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.calc-intake-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.calc-intake input,
+.calc-intake textarea {
+  width: 100%;
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  padding: 11px 12px;
+  outline: none;
+  transition: border-color .15s ease;
+}
+.calc-intake textarea {
+  margin-top: 10px;
+  resize: vertical;
+  min-height: 52px;
+}
+.calc-intake-grid + input { margin-top: 10px; }
+.calc-intake input:focus,
+.calc-intake textarea:focus { border-color: var(--gold-deep); }
+.calc-intake input::placeholder,
+.calc-intake textarea::placeholder { color: var(--muted); }
+.calc-intake-err {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: #B42318;
+  font-weight: 500;
+}
 
 @media (max-width: 980px) {
   .calc-grid { grid-template-columns: 1fr; gap: 32px; }
   .calc-quote { position: static; }
   .calc-quote-amount { font-size: 64px; }
+}
+@media (max-width: 480px) {
+  .calc-intake-grid { grid-template-columns: 1fr; }
 }
 
 /* ===== COVERAGE ===== */
@@ -2003,8 +2053,20 @@ img { max-width: 100%; display: block; }
         <div class="calc-quote-amount" id="calcAmount">$317<sup>EST</sup></div>
         <div class="calc-quote-sub" id="calcSub">2 movers · ~3 hr window · 1 bedroom</div>
         <div class="calc-rows" id="calcRows"></div>
-        <button class="btn btn-dark btn-lg" id="calcLock">Lock in this quote →</button>
-        <div class="calc-fineprint">Held 7 days · 5.0★ across 100+ reviews</div>
+        <div class="calc-intake" id="calcIntake">
+          <div class="calc-intake-head">Send my quote</div>
+          <div class="calc-intake-grid">
+            <input id="ciName"  type="text"  placeholder="Full name" autocomplete="name" />
+            <input id="ciPhone" type="tel"   placeholder="Phone" autocomplete="tel" />
+            <input id="ciEmail" type="email" placeholder="Email" autocomplete="email" />
+            <input id="ciDate"  type="text"  placeholder="Preferred date / time" />
+          </div>
+          <input id="ciAddr" type="text" placeholder="Job address or ZIP" autocomplete="street-address" />
+          <textarea id="ciNotes" rows="2" placeholder="Anything else we should know? (optional)"></textarea>
+          <div class="calc-intake-err" id="ciErr" hidden></div>
+        </div>
+        <button class="btn btn-dark btn-lg" id="calcLock">Request my quote →</button>
+        <div class="calc-fineprint">Opens your email · we reply within the hour · held 7 days</div>
       </aside>
     </div>
   </div>
@@ -2408,6 +2470,9 @@ function renderCalc() {
     `<div class="calc-row"><span class="label">${r[0]} ${r[1] ? `<small>${r[1]}</small>` : ''}</span><b>${r[2]}</b></div>`
   ).join('');
   s.lastTotal = total;
+  s.lastSub = sub;
+  s.lastRows = rows;
+  s.lastServiceLabel = { moving: 'Moving', junk: 'Junk removal', assembly: 'Furniture assembly', handyman: 'Handyman' }[s.service] || s.service;
 }
 
 document.querySelectorAll('#calcTabs .calc-tab').forEach(tab => {
@@ -2484,15 +2549,55 @@ function onStep(key, v) {
 }
 
 document.getElementById('calcLock').addEventListener('click', () => {
-  document.getElementById('calcLock').textContent = 'Saved · we\'ll text you in 60s ✓';
-  document.getElementById('calcLock').style.background = 'var(--live)';
-  document.getElementById('calcLock').style.color = '#fff';
+  const btn = document.getElementById('calcLock');
+  const err = document.getElementById('ciErr');
+  const val = id => (document.getElementById(id)?.value || '').trim();
+  const name = val('ciName'), phone = val('ciPhone'), email = val('ciEmail');
+  const addr = val('ciAddr'), date = val('ciDate'), notes = val('ciNotes');
+
+  if (!name || (!phone && !email)) {
+    err.textContent = 'Add your name and a phone or email so we can send your quote.';
+    err.hidden = false;
+    return;
+  }
+  err.hidden = true;
+
+  const s = calc;
+  const svc = s.lastServiceLabel || s.service;
+  const total = fmt(s.lastTotal || 0);
+  const lines = [];
+  lines.push('Hi Village Solutions — I\'d like to request a quote.');
+  lines.push('');
+  lines.push('— My details —');
+  lines.push('Name: ' + name);
+  if (phone) lines.push('Phone: ' + phone);
+  if (email) lines.push('Email: ' + email);
+  if (addr)  lines.push('Job address / ZIP: ' + addr);
+  if (date)  lines.push('Preferred date/time: ' + date);
+  lines.push('');
+  lines.push('— Service: ' + svc + ' —');
+  lines.push('Online estimate: ' + total + ' (est)');
+  if (s.lastSub) lines.push(s.lastSub);
+  (s.lastRows || []).forEach(r => {
+    lines.push('  • ' + r[0] + (r[1] ? ' (' + r[1] + ')' : '') + ': ' + r[2]);
+  });
+  if (notes) { lines.push(''); lines.push('Notes: ' + notes); }
+  lines.push('');
+  lines.push('Sent from villagesolutions.online');
+
+  const subject = 'Quote request — ' + svc + ' — ' + total + ' est';
+  window.location.href = 'mailto:villagesolutions89@gmail.com'
+    + '?subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(lines.join('\n'));
+
+  btn.textContent = 'Opening your email ✓';
+  btn.style.background = 'var(--live)';
+  btn.style.color = '#fff';
   setTimeout(() => {
-    const t = document.getElementById('calcLock');
-    t.textContent = 'Lock in this quote →';
-    t.style.background = '';
-    t.style.color = '';
-  }, 2800);
+    btn.textContent = 'Request my quote →';
+    btn.style.background = '';
+    btn.style.color = '';
+  }, 3200);
 });
 
 renderCalc();
