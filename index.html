@@ -1717,7 +1717,7 @@ img { max-width: 100%; display: block; }
               <div class="qb-meta">2 movers · 2 hr minimum</div>
               <div class="qb-title">Labor · Load / Unload</div>
             </div>
-            <div class="qb-price">$170<small>2 hr</small></div>
+            <div class="qb-price">$200<small>2 hr</small></div>
             <div class="qb-go">→</div>
           </button>
 
@@ -1786,7 +1786,7 @@ img { max-width: 100%; display: block; }
         <div class="svc-name">Local moves<br>& heavy lifts.</div>
         <p class="svc-desc">Apartment-to-apartment, single heavy items, or the whole house. Two-, three-, or four-person crews — we'll suggest what your move actually needs, no upsell.</p>
         <div class="svc-foot">
-          <div class="price"><b>$85</b>/hr · 2 movers</div>
+          <div class="price"><b>$100</b>/hr · 2 movers</div>
           <div class="svc-go">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
           </div>
@@ -1924,11 +1924,18 @@ img { max-width: 100%; display: block; }
             </div>
           </div>
           <div class="calc-block">
+            <span class="calc-label">Service area</span>
+            <div class="chip-grid" data-group="m-area">
+              <button class="chip selected" data-val="local" data-label="Local">Local area</button>
+              <button class="chip" data-val="far" data-label="Outside local area">Outside local area</button>
+            </div>
+          </div>
+          <div class="calc-block">
             <span class="calc-label">Crew</span>
             <div class="chip-grid" data-group="m-crew">
-              <button class="chip selected" data-val="2" data-rate="85">2 movers · $85/hr</button>
-              <button class="chip" data-val="3" data-rate="115">3 movers · $115/hr</button>
-              <button class="chip" data-val="4" data-rate="170">4 movers · $170/hr</button>
+              <button class="chip selected" data-val="2" data-rate="100" data-rate-local="100" data-rate-far="125">2 movers · $100/hr</button>
+              <button class="chip" data-val="3" data-rate="140" data-rate-local="140" data-rate-far="160">3 movers · $140/hr</button>
+              <button class="chip" data-val="4" data-rate="170" data-rate-local="170" data-rate-far="190">4 movers · $170/hr</button>
             </div>
           </div>
           <div class="calc-block">
@@ -2409,7 +2416,8 @@ document.querySelectorAll('.faq-item').forEach(item => {
 const calc = window.calc = {
   service: 'moving',
   lastTotal: 0,
-  moving: { sizeMult: 1.4, sizeKey: '1br', sizeLabel: '1 bedroom', crewRate: 85, crewSize: 2,
+  moving: { sizeMult: 1.4, sizeKey: '1br', sizeLabel: '1 bedroom', crewRate: 100, crewSize: 2,
+            areaKey: 'local', areaLabel: 'Local',
             truckAdd: 0, truckKey: 'ours', truckLabel: 'Truck included · custom quote',
             helpKey: 'load', helpLabel: 'Load only',
             stairsAdd: 0, stairsKey: 'ground', stairsLabel: 'Ground / elevator' },
@@ -2431,7 +2439,7 @@ function renderCalc() {
     const crew = m.crewRate * hours;
     total = crew + m.truckAdd + m.stairsAdd;
     sub = `${m.crewSize} movers · ~${hours} hr window · ${m.sizeLabel}`;
-    rows.push(['Crew', `$${m.crewRate} × ${hours} hrs`, fmt(crew)]);
+    rows.push(['Crew', `$${m.crewRate} × ${hours} hrs · ${m.areaKey === 'far' ? 'Outside local' : 'Local'}`, fmt(crew)]);
     if (m.truckKey === 'ours') {
       rows.push(['Truck', 'Custom quote — we\'ll confirm', '—']);
     } else {
@@ -2502,6 +2510,20 @@ function applyChip(key, group) {
   const first = sel[0];
   switch(key) {
     case 'm-size': if (first) Object.assign(calc.moving, { sizeMult: parseFloat(first.dataset.mult), sizeKey: first.dataset.val, sizeLabel: first.dataset.label }); break;
+    case 'm-area': {
+      if (!first) break;
+      const far = first.dataset.val === 'far';
+      Object.assign(calc.moving, { areaKey: first.dataset.val, areaLabel: first.dataset.label });
+      const crewGroup = document.querySelector('[data-group="m-crew"]');
+      crewGroup.querySelectorAll('.chip').forEach(c => {
+        const rate = far ? c.dataset.rateFar : c.dataset.rateLocal;
+        c.dataset.rate = rate;
+        c.textContent = `${c.dataset.val} movers · $${rate}/hr`;
+      });
+      const selCrew = crewGroup.querySelector('.chip.selected');
+      if (selCrew) calc.moving.crewRate = +selCrew.dataset.rate;
+      break;
+    }
     case 'm-crew': if (first) Object.assign(calc.moving, { crewRate: +first.dataset.rate, crewSize: +first.dataset.val }); break;
     case 'm-truck':
       if (first) {
